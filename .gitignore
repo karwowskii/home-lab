@@ -1,0 +1,14 @@
+# Terraform files
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Sensitive config
+terraform.tfvars
+terraform.tfvars.json
+
+# IDE or OS junk
+.DS_Store
+Thumbs.db
+*.swp
+
