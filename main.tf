@@ -1,13 +1,22 @@
+terraform {
+  required_providers {
+    proxmox = {
+      source  = "telmate/proxmox"
+      version = "2.9.11" # or latest from GitHub
+    }
+  }
+}
+
 provider "proxmox" {
   pm_api_url      = var.pm_api_url
-  pm_user         = var.pm_user
-  pm_password     = var.pm_password
+  pm_api_token_id         = var.pm_api_token_id
+  pm_api_token_secret     = var.pm_api_token_secret
   pm_tls_insecure = true
 }
 
 resource "proxmox_vm_qemu" "ubuntu_docker" {
   name        = "ubuntu-docker"
-  target_node = "pve"
+  target_node = "host"
   clone       = "ubuntu-template"
 
   cores       = 2
