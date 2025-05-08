@@ -23,7 +23,12 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
-                sh 'docker push $REGISTRY/$IMAGE_NAME'
+                withCredentials([usernamePassword(credentialsId: 'nexus-docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login $REGISTRY -u "$DOCKER_USER" --password-stdin
+                        docker push $REGISTRY/$IMAGE_NAME
+                    '''
+                }
             }
         }
     }
