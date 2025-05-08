@@ -31,5 +31,15 @@ pipeline {
                 }
             }
         }
+        
+        stage('Deploy Docker Image') {
+          steps {
+            dir('docker-apps/hello-jenkins') {
+              sh 'docker compose down || true'
+              sh 'docker compose pull'
+              sh 'docker compose up -d'
+            }
+          }
+        }
     }
 }
