@@ -1,31 +1,30 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    DOCKER_REGISTRY = "192.168.0.112:5000"
-    IMAGE_NAME = "${DOCKER_REGISTRY}/jenkins-hello"
-  }
-
-  stages {
-    stage('Clone') {
-      steps {
-        echo 'Repo cloned automatically by Jenkins'
-      }
+    environment {
+        REGISTRY = "192.168.0.112:5000"
+        IMAGE_NAME = "jenkins-hello"
     }
 
-    stage('Build Docker Image') {
-      steps {
-        sh 'docker build -t $IMAGE_NAME .'
-      }
-    }
-
-    stage('Push Docker Image') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'docker-registry-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-          sh 'echo $DOCKER_PASS | docker login $DOCKER_REGISTRY -u $DOCKER_USER --password-stdin'
-          sh 'docker push $IMAGE_NAME'
+    stages {
+        stage('Clone') {
+            steps {
+                echo "Repo cloned automatically by Jenkins"
+            }
         }
-      }
+
+        stage('Build Docker Image') {
+            steps {
+                dir('docker-apps/hello-jenkins') {
+                    sh 'docker build -t $REGISTRY/$IMAGE_NAME .'
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                sh 'docker push $REGISTRY/$IMAGE_NAME'
+            }
+        }
     }
-  }
 }
