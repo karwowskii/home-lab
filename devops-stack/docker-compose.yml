@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+#  gitlab:
+#    image: gitlab/gitlab-ce:latest
+#    hostname: gitlab.local
+#    container_name: gitlab
+#    restart: always
+#    shm_size: '256m'
+#    ports:
+#      - "8929:80"
+#      - "2224:22"
+#    volumes:
+#      - gitlab_config:/etc/gitlab
+#      - gitlab_logs:/var/log/gitlab
+#      - gitlab_data:/var/opt/gitlab
+
+  jenkins:
+    build: .
+    user: root
+    container_name: jenkins
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+
+  nexus:
+    image: sonatype/nexus3
+    container_name: nexus
+    restart: always
+    ports:
+      - "8081:8081"
+      - "5000:5000"
+    volumes:
+      - nexus_data:/nexus-data
+
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
+    restart: always
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+volumes:
+#  gitlab_config:
+#  gitlab_logs:
+#  gitlab_data:
+  jenkins_home:
+  nexus_data:
+  portainer_data:
