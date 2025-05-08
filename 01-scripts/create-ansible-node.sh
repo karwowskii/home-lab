@@ -14,22 +14,28 @@ echo "[INFO] Fetching Proxmox configuration..."
 read -rp "Enter a unique VM ID: " VMID
 read -rp "Enter a hostname for the VM (e.g., ansible-node): " VM_NAME
 
+# Check if VM ID exists
+if qm status "$VMID" &>/dev/null; then
+  echo "[ERROR] VM ID $VMID already exists on the node. Please choose a different ID."
+  exit 1
+fi
+
 # Fetch available nodes
-NODES=$(pvesh get /nodes | jq -r '.[].node')
+NODES=$(pvesh get /nodes --output-format=json | jq -r '.[].node')
 echo "Available Proxmox nodes:"
 select NODE in $NODES; do
   [[ -n "$NODE" ]] && break
 done
 
 # Fetch available storages
-STORAGES=$(pvesh get /nodes/$NODE/storage | jq -r '.[].storage')
+STORAGES=$(pvesh get /nodes/$NODE/storage --output-format=json | jq -r '.[].storage')
 echo "Available storage pools:"
 select STORAGE in $STORAGES; do
   [[ -n "$STORAGE" ]] && break
 done
 
 # Fetch available bridges
-BRIDGES=$(pvesh get /nodes/$NODE/network | jq -r '.[] | select(.type == "bridge") | .iface')
+BRIDGES=$(pvesh get /nodes/$NODE/network --output-format=json | jq -r '.[] | select(.type == "bridge") | .iface')
 echo "Available network bridges:"
 select BRIDGE in $BRIDGES; do
   [[ -n "$BRIDGE" ]] && break
@@ -59,28 +65,28 @@ qm create "$VMID" \
 echo "[INFO] Importing disk to $STORAGE..."
 qm importdisk "$VMID" "$IMG_PATH" "$STORAGE"
 
-# Attach imported disk to VM
-qm set "$VMID" --scsi0 "$STORAGE":vm-"$VMID"-disk-0
+# Determine the actual disk name
+VOLUME_NAME=$(pvesm list "$STORAGE" | awk -v vmid="$VMID" '$0 ~ vmid && $0 ~ "raw" {print $1}' | head -n1 | cut -d ':' -f2)
 
-# Add SSH key
-read -rp "Enter the path to your SSH public key (e.g., ~/.ssh/id_rsa.pub): " SSH_KEY_PATH
-if [[ ! -f "$SSH_KEY_PATH" ]]; then
-  echo "SSH key not found at $SSH_KEY_PATH"
-  exit 1
+
+# Handle SSH key input
+read -rp "Enter the path to your SSH public key (leave empty to paste manually): " SSH_KEY_PATH
+
+if [[ -n "$SSH_KEY_PATH" && -f "$SSH_KEY_PATH" ]]; then
+  PUBKEY=$(cat "$SSH_KEY_PATH")
+else
+  echo "Paste your public SSH key"
+  read -r PUBKEY
 fi
-PUBKEY=$(cat "$SSH_KEY_PATH")
 
 # Configure cloud-init options
 qm set "$VMID" \
   --ciuser ubuntu \
-  --sshkeys "$PUBKEY" \
-  --ipconfig0 ip=dhcp
-
-# Resize disk (optional, uncomment if needed)
-# qm resize "$VMID" scsi0 +20G
+  --sshkeys <(echo "$PUBKEY") \
+  --ipconfig0 ip=dhcp || { echo "[ERROR] Failed to set cloud-init"; exit 1; }
 
 # Start the VM
 echo "[INFO] Starting VM $VMID..."
 qm start "$VMID"
 
-echo "VM '$VM_NAME' created and started (VMID: $VMID). SSH will be available once DHCP assigns an IP."
+echo "[SUCCESS] VM '$VM_NAME' created and started (VMID: $VMID). SSH will be available once DHCP assigns an IP."
