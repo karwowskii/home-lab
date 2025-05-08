@@ -6,72 +6,96 @@ This guide will describe how to create a clean, reusable Ubuntu 24.04 VM templat
 
 ## Stack Overview
 
-- **Docker Host**: Ubuntu VM running all services via Docker Compose
-	- **Jenkins**: CI/CD pipelines
-	- **Nexus**: Docker image registry
-	- **Portainer**: Docker GUI management
-- **Ansible**: Ubuntu VM for infrastructure automation
-	- **Terraform**: Infrastructure deployment
-- **Pi-hole**: RPi 4/4GB DNS-based ad-blocker 
-	- **VaultWarden**: Home-based vault
-- **Monitoring**: Ubuntu VM for monitoring
-	- **Zabbix**: 
-	- **ELK**: 
+This home lab consists of:
 
-## Repo Layout
+   - Orchestration VM (ansible-node):
+       * Runs Ansible and Terraform
+       * Provisions all other VMs
+   - Docker Host (docker-ubuntu):
+       * Jenkins (CI/CD)
+       * Nexus (Docker registry)
+       * Portainer (container management)
+   - Monitoring VM (monitoring):
+       * Prometheus + Grafana (metrics stack)
+   - K3s Cluster Master (k3s-master):
+       * Lightweight Kubernetes for experimentation
 
-    home-lab/
-    ├── ansible/
-    ├── terraform/
-    ├── docker-apps/
-    ├── monitoring/
-    ├── devops-stack/
-    ├── scripts/
-    │   └── template-bootstrap.sh
-    └── README.md
+Additional services like Pi-hole and Vaultwarden may run on physical Raspberry Pis and are referenced but not provisioned by this repository.
 
+## Repo structure
 
-## Getting Started
+	home-lab/
+	├── 00-proxmox-template/         # Optional legacy template setup
+	├── 01-scripts/                  # Core bootstrap scripts
+	│   ├── create-ansible-node.sh   # Main provisioning entry point
+	│   └── setup.sh                 # Bootstrap entry point from clean Proxmox
+	├── ansible/                     # Infrastructure automation
+	│   ├── playbooks/
+	│   └── roles/
+	├── devops-stack/                # Docker Compose services (Jenkins, Nexus, etc.)
+	├── docker-apps/                 # Sample Jenkins apps
+	├── terraform/                   # Infra-as-code (under development)
+	├── docs/                        # Diagrams, setup guides
+	└── README.md
 
-The assumption here is that you will have a basic Proxmox install on your hypervisor. From there your first point of call would be to upload an Ubuntu 24.04+ ISO into Proxmox and create a very basic VM.
-Once that is done, the scripts will take care of the rest of the setup, including post-deployment configuration and templating. 
+## Quick Start (Proxmox Host)
 
-### 1. Prerequisites
+Assumes a clean Proxmox VE install with network access and no templates configured.
 
-- Ubuntu 24.04+ VM with SSH access
-- SSH access to Ansible host
-- A working Proxmox VE installation.
-- CRITCAL: VM is not yet configured as a template.
+## 1. Download and Run Setup
 
+SSH into the Proxmox node and run:
+	wget https://raw.githubusercontent.com/karwowskii/home-lab/main/01-scripts/setup.sh
+	chmod +x setup.sh
+	./setup.sh
 
-### 2. Setup Steps (One-Time for Templating)
+This script:
+   * Installs required tools (wget, jq, cloud-image-utils, etc.)
+   * Downloads and runs the create-ansible-node.sh script
+   * Bootstraps the ansible-node VM using Ubuntu 24.04 cloud image
 
-- SSH into the base VM:
-    ssh ubuntu@<VM-IP>
+## 2. SSH into Control Node
 
-- Run the bootstrap script:
-  - Fetch and run from Git:
-      curl -s https://raw.githubusercontent.com/karwowskii/home-lab/main/scripts/template-bootstrap.sh | bash
-  - What this script does:
-      - Updates and installs required packages:
-          cloud-init, qemu-guest-agent, net-tools, etc.
-      - Configures netplan for DHCP via cloud-init
-      - Enables cloud-init and qemu-guest-agent
-      - Cleans out system-specific IDs and SSH keys
-      - Powers off the machine
+Once created, SSH into the ansible-node using the discovered IP (auto-printed by the script):
+	ssh ubuntu@<ansible-node-ip>
 
-- In Proxmox:
-  - Convert the VM to a template:
-      qm template <VMID>
+## 3. Continue Provisioning
 
-- Now this template is ready to clone.
+From within the control node:
+   * Use Ansible to provision remaining VMs
+   * Use Terraform to optionally define VM infrastructure
+   * Deploy Docker-based services with Compose
 
-### 3. Next Steps
+Automation playbooks will be stored in ansible/playbooks/.
 
-Use Ansible or Terraform to automate cloning and provisioning
+## Bootstrap from a Clean Proxmox Installation
 
-Create VMs like docker-ubuntu, ansible-node, k3s-master, logging-ubuntu from this base
+If you're working from a fresh Proxmox VE install, and no templates or Git are available, this project can still be used to fully automate your environment.
 
-Store all scripts, Ansible roles, and Terraform modules in your home-lab repo
+#### Step-by-Step Bootstrap Instructions
 
+    1. SSH into your Proxmox host and run the following:
+	wget https://raw.githubusercontent.com/karwowskii/home-lab/main/01-scripts/setup.sh
+	chmod +x setup.sh
+	./setup.sh
 
+    This script will:
+    * Install required packages (wget, jq, cloud-image-utils, etc.)
+    * Download and execute create-ansible-node.sh
+    * Provision the control node (ansible-node) using Ubuntu 24.04 cloud-init image
+
+    2. SSH into the new orchestration VM:
+	ssh ubuntu@<ansible-node-ip>
+
+    This IP will be shown at the end of the script output.
+
+    3. Continue provisioning from inside the control node using Ansible and Terraform.
+
+## Next Steps and Automation Plan
+
+    * Use Ansible playbooks (ansible/playbooks/) to configure:
+       * Docker host (Jenkins, Nexus, Portainer)
+       * Monitoring stack (Prometheus, Grafana)
+       * Common provisioning (hostname, SSH, users)
+    * Optional: Use Terraform to define VM infrastructure
+    * Automate full stack deployment for reproducibility and CI/CD workflows
