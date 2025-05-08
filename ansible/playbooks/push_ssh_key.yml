@@ -1,0 +1,16 @@
+- name: SSH key push
+  hosts: all
+  become: true
+  vars:
+    user: ubuntu
+
+  tasks:
+    - name: Ensure user exists
+      ansible.builtin.user:
+        name: "{{ user }}"
+        shell: /bin/bash
+
+    - name: Authorise SSH keys
+      ansible.builtin.authorized_key:
+        user: "{{ user }}"
+        key: "{{ ansible_ssh_public_key }}"

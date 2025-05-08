@@ -1,0 +1,54 @@
+- name: Create a Proxmox VM from template
+  hosts: localhost
+  gather_facts: no
+
+  vars_prompt:
+    - name: "vm_id"
+      prompt: "Enter the new VM ID (must be unused)"
+      private: no
+
+    - name: "vm_name"
+      prompt: "Enter the new VM hostname"
+      private: no
+
+    - name: "disk_size"
+      prompt: "Enter disk size (e.g. 40G)"
+      private: no
+
+  vars_files:
+    - proxmox_secrets.yml
+
+  vars:
+    node: host
+    storage: "data-4tb"
+    clone_from_name: "ubuntu-template"
+    ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+  tasks:
+    - name: Clone VM from template
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ api_user }}"
+        api_token_id: "{{ api_token_id }}"
+        api_token_secret: "{{ api_token_secret }}"
+        node: "{{ node }}"
+        target: "{{ node }}"
+        newid: "{{ vm_id }}"
+        name: "{{ vm_name }}"
+        clone: "{{ clone_from_name }}"
+        full: true
+        storage: "{{ storage }}"
+        cores: 2
+        memory: 4096
+        net:
+          net0: virtio,bridge=vmbr0,firewall=1
+        ipconfig:
+          ipconfig0: ip=dhcp
+        ciuser: ubuntu
+        sshkeys: "{{ ssh_key }}"
+        scsihw: virtio-scsi-pci
+        bootdisk: scsi0
+        boot: order=scsi0;ide2;net0
+        timeout: 300
+        state: present
+

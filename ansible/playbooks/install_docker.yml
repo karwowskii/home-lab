@@ -1,0 +1,12 @@
+- name: Install Docker on Host
+  hosts: "{{ target_host }}"
+  become: yes
+  gather_facts: yes
+
+  vars_prompt:
+    - name: target_host
+      prompt: "Enter the hostname or IP of the VM"
+      private: no
+
+  roles:
+    - docker-install
