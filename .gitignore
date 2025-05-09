@@ -11,4 +11,4 @@ terraform.tfvars.json
 .DS_Store
 Thumbs.db
 *.swp
-
+02-ansible/inventory.ini
