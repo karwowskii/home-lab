@@ -22,26 +22,10 @@ set -e
 
 echo "[INFO] Updating and installing required packages..."
 sudo apt update
-sudo apt install -y ansible terraform git python3-pip python3-venv || { echo "[ERROR] Package installation failed."; exit 1; }
+sudo apt install -y ansible git python3-pip python3-venv unzip wget || { echo "[ERROR] Package installation failed."; exit 1; }
 
-echo "[INFO] Verifying Ansible installation..."
-if ! command -v ansible >/dev/null; then
-  echo "[ERROR] Ansible installation failed."
-  exit 1
-fi
-
-echo "[INFO] Installing Python packages for Ansible..."
-pip3 install --user netaddr jmespath || { echo "[ERROR] Python package installation failed."; exit 1; }
-
-echo "[INFO] Setting up home-lab repository..."
-if [ ! -d \"$HOME/home-lab\" ]; then
-  git clone https://github.com/karwowskii/home-lab.git || { echo "[ERROR] Git clone failed."; exit 1; }
-else
-  cd $HOME/home-lab && git pull
-fi
-
-echo "[INFO] Bootstrap complete. Ansible node is ready."
-EOF
-)
-
-ssh -o StrictHostKeyChecking=no "${ANSIBLE_NODE_USER}@${ANSIBLE_NODE_IP}" "$REMOTE_COMMANDS"
+echo "[INFO] Installing Terraform manually..."
+TERRAFORM_VERSION="1.8.1"
+cd /tmp
+wget -q https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip || { echo "[ERROR] Failed to download Terraform."; exit 1; }
+un
