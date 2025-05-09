@@ -1,0 +1,6 @@
+---
+- name: Provision Monitoring Stack
+  hosts: monitoring
+  become: true
+  roles:
+    - monitoring
