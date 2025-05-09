@@ -1,0 +1,6 @@
+services:
+  homelab:
+    image: homelab
+    build:
+      context: .
+      dockerfile: ./Dockerfile

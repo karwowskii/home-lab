@@ -138,3 +138,36 @@ while true; do
     sleep 15
   fi
 done
+
+# Define where inventory.ini should be created/updated
+INVENTORY_PATH="../02-ansible/inventory.ini"
+
+# Ensure the Ansible directory exists
+mkdir -p "$(dirname "$INVENTORY_PATH")"
+
+GROUP_NAME=$(echo "$VM_NAME" | cut -d'-' -f1)  # e.g., 'ansible', 'docker', 'monitoring'
+
+# Add group header if not already present
+if ! grep -q "^\[$GROUP_NAME\]$" "$INVENTORY_PATH" 2>/dev/null; then
+  echo -e "\n[$GROUP_NAME]" >> "$INVENTORY_PATH"
+fi
+
+# Append host entry
+echo "$IP ansible_user=ubuntu" >> "$INVENTORY_PATH"
+
+# Add common vars section if not present
+if ! grep -q "^\[all:vars\]$" "$INVENTORY_PATH" 2>/dev/null; then
+  cat >> "$INVENTORY_PATH" <<EOF
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+EOF
+fi
+
+echo "[INFO] $INVENTORY_PATH updated with $VM_NAME ($IP)"
+
+# Save connection info for downstream script
+cat <<EOF > /tmp/ansible-node-info
+ANSIBLE_NODE_IP=$IP
+ANSIBLE_NODE_USER=ubuntu
+EOF

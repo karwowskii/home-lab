@@ -1,21 +1,64 @@
 #!/bin/bash
+
 set -e
 
-echo "[INFO] Starting Home Lab setup on clean Proxmox host..."
+# Path to scripts\SCRIPT_DIR="$(dirname "$0")"
+CREATE_SCRIPT="$SCRIPT_DIR/create-ansible-node.sh"
+BOOTSTRAP_SCRIPT="$SCRIPT_DIR/bootstrap-ansible-node.sh"
+PROVISION_SCRIPT="$SCRIPT_DIR/run-provisioning-from-node.sh"
 
-REQUIRED_PKGS=("wget" "curl" "jq" "cloud-image-utils" "qemu-utils")
-for pkg in "${REQUIRED_PKGS[@]}"; do
-    if ! dpkg -s "$pkg" >/dev/null 2>&1; then
-        echo "[INFO] Installing missing package: $pkg"
-        apt update && apt install -y "$pkg"
-    fi
+function confirm_step() {
+    local msg="$1"
+    read -p "$msg [y/N]: " choice
+    case "$choice" in
+        y|Y) return 0 ;; 
+        *) echo "[INFO] Skipping..."; return 1 ;;
+    esac
+}
+
+function main_menu() {
+    echo "Home Lab Setup Menu"
+    echo "1) Provision Ansible Control Node"
+    echo "2) Bootstrap Ansible Control Node"
+    echo "3) Provision Full Environment"
+    echo "4) Run All Steps"
+    echo "5) Exit"
+    read -p "Choose an option: " opt
+    case "$opt" in
+        1)
+            echo "-- Provisioning Ansible Control Node --"
+            bash "$CREATE_SCRIPT"
+            ;;
+        2)
+            echo "-- Bootstrapping Ansible Control Node --"
+            if confirm_step "Have you run Provision Ansible Control Node?"; then
+                read -p "Enter Ansible node IP: " ip
+                bash "$BOOTSTRAP_SCRIPT" "$ip"
+            fi
+            ;;
+        3)
+            echo "-- Provisioning Full Environment --"
+            if confirm_step "Have you bootstrapped the Ansible control node?"; then
+                read -p "Enter Ansible node IP: " ip
+                bash "$PROVISION_SCRIPT" "$ip"
+            fi
+            ;;
+        4)
+            echo "-- Running All Steps --"
+            bash "$CREATE_SCRIPT"
+            read -p "Enter Ansible node IP: " ip_all
+            bash "$BOOTSTRAP_SCRIPT" "$ip_all"
+            bash "$PROVISION_SCRIPT" "$ip_all"
+            ;;
+        5)
+            exit 0
+            ;;
+        *) echo "Invalid option";;
+    esac
+}
+
+# Loop until user exits
+while true; do
+    main_menu
+    echo
 done
-
-echo "[INFO] Downloading create-ansible-node.sh..."
-wget -O create-ansible-node.sh https://raw.githubusercontent.com/karwowskii/home-lab/main/01-scripts/create-ansible-node.sh
-chmod +x create-ansible-node.sh
-
-echo "[INFO] Running create-ansible-node.sh to initialize orchestration VM..."
-./create-ansible-node.sh
-
-echo "[INFO] Control node creation complete. You may now SSH into the VM and continue setup."
