@@ -2,13 +2,12 @@
 
 set -e
 
-# Resolve absolute path of the directory this script is in
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Script paths
 CREATE_SCRIPT="$SCRIPT_DIR/create-ansible-node.sh"
 BOOTSTRAP_SCRIPT="$SCRIPT_DIR/bootstrap-ansible-node.sh"
 PROVISION_SCRIPT="$SCRIPT_DIR/run-provisioning-from-node.sh"
+SECRETS_SCRIPT="$SCRIPT_DIR/setup-proxmox-secrets.sh"
 INFO_FILE="/tmp/ansible-node-info"
 
 function confirm_step() {
@@ -36,7 +35,7 @@ function main_menu() {
     echo "Home Lab Setup Menu"
     echo "1) Provision Ansible Control Node"
     echo "2) Bootstrap Ansible Control Node"
-    echo "3) Provision Full Environment"
+    echo "3) Provision Full Environment (create VMs, then configure)"
     echo "4) Run All Steps"
     echo "5) Exit"
     read -p "Choose an option: " opt
@@ -53,8 +52,9 @@ function main_menu() {
             fi
             ;;
         3)
-            echo "-- Provisioning Full Environment --"
-            if confirm_step "Have you bootstrapped the Ansible control node?"; then
+            echo "-- Full Provisioning --"
+            if confirm_step "Have you bootstrapped the Ansible node and want to create VMs?"; then
+                bash "$SECRETS_SCRIPT"
                 read_node_info
                 bash "$PROVISION_SCRIPT" "$ANSIBLE_NODE_IP"
             fi
@@ -64,6 +64,7 @@ function main_menu() {
             bash "$CREATE_SCRIPT"
             read_node_info
             bash "$BOOTSTRAP_SCRIPT" "$ANSIBLE_NODE_IP"
+            bash "$SECRETS_SCRIPT"
             bash "$PROVISION_SCRIPT" "$ANSIBLE_NODE_IP"
             ;;
         5)
@@ -73,7 +74,6 @@ function main_menu() {
     esac
 }
 
-# Loop until user exits
 while true; do
     main_menu
     echo

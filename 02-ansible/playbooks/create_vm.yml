@@ -1,31 +1,33 @@
-- name: Create a Proxmox VM from template
+---
+- name: Create multiple Proxmox VMs from a template
   hosts: localhost
+  connection: local
   gather_facts: no
 
-  vars_prompt:
-    - name: "vm_id"
-      prompt: "Enter the new VM ID (must be unused)"
-      private: no
-
-    - name: "vm_name"
-      prompt: "Enter the new VM hostname"
-      private: no
-
-    - name: "disk_size"
-      prompt: "Enter disk size (e.g. 40G)"
-      private: no
-
   vars_files:
-    - proxmox_secrets.yml
+    - ../vars/proxmox_secrets.yml  # contains proxmox_host, api_user, api_token_id, api_token_secret
 
   vars:
     node: host
     storage: "data-4tb"
     clone_from_name: "ubuntu-template"
     ssh_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+    inventory_file: "../inventory.ini"
+
+    vm_definitions:
+      - vm_id: 201
+        vm_name: docker-ubuntu
+        group: docker
+      - vm_id: 202
+        vm_name: monitoring
+        group: monitoring
+      - vm_id: 203
+        vm_name: k3s-master
+        group: k3s
 
   tasks:
-    - name: Clone VM from template
+
+    - name: Clone VMs from template
       community.general.proxmox_kvm:
         api_host: "{{ proxmox_host }}"
         api_user: "{{ api_user }}"
@@ -33,8 +35,8 @@
         api_token_secret: "{{ api_token_secret }}"
         node: "{{ node }}"
         target: "{{ node }}"
-        newid: "{{ vm_id }}"
-        name: "{{ vm_name }}"
+        newid: "{{ item.vm_id }}"
+        name: "{{ item.vm_name }}"
         clone: "{{ clone_from_name }}"
         full: true
         storage: "{{ storage }}"
@@ -51,4 +53,33 @@
         boot: order=scsi0;ide2;net0
         timeout: 300
         state: present
+      loop: "{{ vm_definitions }}"
+      loop_control:
+        label: "{{ item.vm_name }}"
 
+    - name: Wait for VMs to boot (30s)
+      pause:
+        seconds: 30
+
+    - name: Poll IP addresses using qm guest cmd
+      shell: |
+        qm guest cmd {{ item.vm_id }} network-get-interfaces | jq -r \
+        '.[] | select(.name != "lo") | .["ip-addresses"][] | select(."ip-address-type" == "ipv4") | ."ip-address"' | head -n1
+      register: vm_ips
+      changed_when: false
+      loop: "{{ vm_definitions }}"
+      loop_control:
+        label: "{{ item.vm_name }}"
+
+    - name: Assemble inventory.ini
+      copy:
+        dest: "{{ inventory_file }}"
+        content: |
+          {% for vm in vm_definitions %}
+          [{{ vm.group }}]
+          {% set ip = (vm_ips.results[loop.index0].stdout | default('')) %}
+          {{ ip }} ansible_user=ubuntu
+          {% endfor %}
+
+          [all:vars]
+          ansible_python_interpreter=/usr/bin/python3
