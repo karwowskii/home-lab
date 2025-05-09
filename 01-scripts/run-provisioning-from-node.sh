@@ -10,17 +10,18 @@ fi
 
 source "$ANSIBLE_INFO_FILE"
 
-if [[ -z "$ANSIBLE_NODE_IP" || -z "$ANSIBLE_NODE_USER" ]]; then
-  echo "[ERROR] Missing IP or user info in $ANSIBLE_INFO_FILE"
+if [[ -z "$ANSIBLE_NODE_IP" ]]; then
+  echo "[ERROR] Missing IP in $ANSIBLE_INFO_FILE"
   exit 1
 fi
 
 echo "[INFO] Running provisioning playbooks on Ansible node at $ANSIBLE_NODE_IP..."
 
 REMOTE_COMMANDS=$(cat <<'EOF'
-cd ~/home-lab/ansible
+cd /home/ubuntu/home-lab/02-ansible || { echo "[ERROR] home-lab repo not found"; exit 1; }
 
 echo "[INFO] Running bootstrap-common.yml..."
+source /home/ubuntu/ansible-venv/bin/activate
 ansible-playbook -i inventory.ini playbooks/bootstrap-common.yml || { echo "[ERROR] Failed: bootstrap-common.yml"; exit 1; }
 
 echo "[INFO] Running provision-docker.yml..."
@@ -33,5 +34,4 @@ echo "[INFO] All playbooks completed successfully."
 EOF
 )
 
-ssh -o StrictHostKeyChecking=no "${ANSIBLE_NODE_USER}@${ANSIBLE_NODE_IP}" "$REMOTE_COMMANDS"
-
+ssh -o StrictHostKeyChecking=no "ubuntu@${ANSIBLE_NODE_IP}" "$REMOTE_COMMANDS"

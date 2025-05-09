@@ -1,0 +1,45 @@
+---
+- name: Install Docker (for Prometheus + Grafana stack)
+  include_role:
+    name: docker_host
+
+- name: Deploy monitoring stack using Docker Compose
+  shell: |
+    docker network create monitoring || true
+    docker volume create prometheus_data
+    docker volume create grafana_data
+
+    mkdir -p /opt/monitoring
+    cd /opt/monitoring
+
+    cat > docker-compose.yml <<EOF
+    version: '3'
+    services:
+      prometheus:
+        image: prom/prometheus
+        ports:
+          - "9090:9090"
+        volumes:
+          - prometheus_data:/prometheus
+        networks:
+          - monitoring
+
+      grafana:
+        image: grafana/grafana
+        ports:
+          - "3000:3000"
+        volumes:
+          - grafana_data:/var/lib/grafana
+        networks:
+          - monitoring
+    volumes:
+      prometheus_data:
+      grafana_data:
+    networks:
+      monitoring:
+        external: true
+    EOF
+
+    docker compose up -d
+  args:
+    executable: /bin/bash
