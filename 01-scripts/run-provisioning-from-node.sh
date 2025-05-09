@@ -18,10 +18,15 @@ fi
 echo "[INFO] Running provisioning playbooks on Ansible node at $ANSIBLE_NODE_IP..."
 
 REMOTE_COMMANDS=$(cat <<'EOF'
-cd /home/ubuntu/home-lab/02-ansible || { echo "[ERROR] home-lab repo not found"; exit 1; }
+cd /home/ubuntu/home-lab/02-ansible || { echo "[ERROR] Repo not found"; exit 1; }
+
+echo "[INFO] Activating virtual environment..."
+source /home/ubuntu/ansible-venv/bin/activate
+
+echo "[INFO] Running create_vm.yml to create infrastructure VMs..."
+ansible-playbook playbooks/create_vm.yml || { echo "[ERROR] Failed: create_vm.yml"; exit 1; }
 
 echo "[INFO] Running bootstrap-common.yml..."
-source /home/ubuntu/ansible-venv/bin/activate
 ansible-playbook -i inventory.ini playbooks/bootstrap-common.yml || { echo "[ERROR] Failed: bootstrap-common.yml"; exit 1; }
 
 echo "[INFO] Running provision-docker.yml..."
@@ -30,7 +35,7 @@ ansible-playbook -i inventory.ini playbooks/provision-docker.yml || { echo "[ERR
 echo "[INFO] Running provision-monitoring.yml..."
 ansible-playbook -i inventory.ini playbooks/provision-monitoring.yml || { echo "[ERROR] Failed: provision-monitoring.yml"; exit 1; }
 
-echo "[INFO] All playbooks completed successfully."
+echo "[INFO] All provisioning steps completed successfully."
 EOF
 )
 
