@@ -25,11 +25,13 @@ Additional services like Pi-hole and Vaultwarden may run on physical Raspberry P
 ## Repo structure
 
 	home-lab/
-	├── 00-proxmox-template/         # Optional legacy template setup
-	├── 01-scripts/                  # Core bootstrap scripts
-	│   ├── create-ansible-node.sh   # Main provisioning entry point
-	│   └── setup.sh                 # Bootstrap entry point from clean Proxmox
-	├── ansible/                     # Infrastructure automation
+	├── 00-proxmox-template/                # Optional legacy template setup
+	├── 01-scripts/                         # Core bootstrap scripts
+	│   ├── bootstrap-ansible.sh            # Configures the ansible VM post deployment
+    │   ├── create-ansible-node.sh          # Main provisioning entry point
+    │   ├── run-provisioning-from-node.sh   # Provisions the rest of the environment 
+	│   └── setup.sh                        # Bootstrap entry point from clean Proxmox
+	├── 02-ansible/                         # Infrastructure automation
 	│   ├── playbooks/
 	│   └── roles/
 	├── devops-stack/                # Docker Compose services (Jenkins, Nexus, etc.)
